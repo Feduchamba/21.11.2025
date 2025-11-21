@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отправка POST запроса</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Отправка POST запроса</h1>
+    
+    <div class="input-group">
+        <label for="numbersInput">Введите цифры (через запятую):</label>
+        <input type="text" id="numbersInput" placeholder="Например: 1,2,3,4,5" value="1,2">
+        <div class="info">Введите цифры, разделенные запятыми</div>
+    </div>
+
+    <button onclick="sendPostRequest()">Отправить POST запрос</button>
+
+    <script>
+        function sendPostRequest() {
+    // Получаем значение из input
+    const input = document.getElementById('numbersInput').value;
+    
+    // Преобразуем строку в массив чисел
+    const numbersArray = input.split(',')
+        .map(num => num.trim())
+        .filter(num => num !== '')
+        .map(num => {
+            const parsed = parseInt(num);
+            return isNaN(parsed) ? num : parsed;
+        });
+
+    // Проверяем, что в массиве есть числа
+    if (numbersArray.length === 0) {
+        alert('Пожалуйста, введите хотя бы одно число');
+        return;
+    }
+
+    // URL для отправки запроса
+    const url = 'http://localhost:8080/pastLinks';
+    
+    // Данные для отправки
+    const data = {
+        linksNum: numbersArray
+    };
+
+    console.log('Отправляемые данные:', data);
+
+    // Отправка POST запроса
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка сети: ' + response.status);
+        }
+        
+        // Проверяем, что ответ - PDF
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/pdf')) {
+            return response.blob();
+        } else {
+            throw new Error('Ожидался PDF файл, но получен: ' + contentType);
+        }
+    })
+    .then(blob => {
+        // Создаем URL для blob и скачиваем файл
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        
+        // Создаем имя файла (можно настроить как нужно)
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        a.download = `document-${timestamp}.pdf`;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        // Очистка
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        console.log('PDF успешно получен и скачан');
+        alert('PDF файл успешно скачан!');
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Произошла ошибка: ' + error.message);
+    });
+}
+    </script>
+</body>
+</html>
